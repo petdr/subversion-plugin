@@ -2531,8 +2531,8 @@ public class SubversionSCM extends SCM implements Serializable {
 
                 LOGGER.log(FINE, "isSubModule " + remote_parent.toString() + " " + remote_child.toString());
 
-                return remote_child.getParent().equals(remote_parent)        // check if remote_child is a direct child of remote_parent
-                    && local_child.getParent().equals(local_parent)          // check if local_child is a direct child of local_parent
+                return remote_child.getParentFile().equals(remote_parent)        // check if remote_child is a direct child of remote_parent
+                    && local_child.getParentFile().equals(local_parent)          // check if local_child is a direct child of local_parent
                     && remote_child.getName().equals(local_child.getName()); // check if suffix of remote and local match
 
             } catch (SVNException e) {
