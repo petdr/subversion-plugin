@@ -332,6 +332,10 @@ public class SubversionSCM extends SCM implements Serializable {
         this.includedRegions = includedRegions;
         this.ignoreDirPropChanges = ignoreDirPropChanges;
         this.filterChangelog = filterChangelog;
+
+        System.out.println("XXX");
+        LOGGER.log(FINE, "determineSparseCheckoutSubmodules");
+        ModuleLocation.determineSparseCheckoutSubmodules(this.locations);
     }
 
     /**
@@ -2308,6 +2312,11 @@ public class SubversionSCM extends SCM implements Serializable {
         public boolean ignoreExternalsOption;
 
         /**
+         * Is the module location a sub module of some sparse checkout?
+         */
+        private transient volatile boolean isSubmoduleOfSparseCheckout = false;
+
+        /**
          * Cache of the repository UUID.
          */
         private transient volatile UUID repositoryUUID;
@@ -2436,6 +2445,17 @@ public class SubversionSCM extends SCM implements Serializable {
         }
 
         /**
+         * Is the ModuleLocation a submodule in a sparse checkout?
+         * Use {@link #determineSparseCheckoutSubmodules(locations)} to determine
+         * which ModuleLocations are submodules.
+         *
+         * @return true if the ModuleLocation is a submodule in a sparse checkout
+         */
+        public boolean isSubmoduleOfSparseCheckout() {
+            return isSubmoduleOfSparseCheckout;
+        }
+
+        /**
          * Expand location value based on Build parametric execution.
          *
          * @param build Build instance for expanding parameters into their values
@@ -2481,6 +2501,43 @@ public class SubversionSCM extends SCM implements Serializable {
                 }
             }
             return modules;
+        }
+
+        /**
+         * Given an array of ModuleLocation determine which ModuleLocation are submodules in a sparse checkout.
+         * Call {@link #isSubmoduleOfSparseCheckout()} 
+         */
+        public static void determineSparseCheckoutSubmodules(ModuleLocation[] locations) {
+            for (ModuleLocation parent: locations) {
+                for (ModuleLocation child: locations) {
+                    // If they are the same location don't compare
+                    if (parent == child) continue;
+
+                    if (isSubModule(parent, child)) {
+                        child.isSubmoduleOfSparseCheckout = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        private static boolean isSubModule(ModuleLocation parent, ModuleLocation child) {
+            try {
+                File remote_parent = new File(parent.getSVNURL().getPath());
+                File remote_child = new File(child.getSVNURL().getPath());
+
+                File local_parent = new File(parent.getLocalDir());
+                File local_child = new File(child.getLocalDir());
+
+                LOGGER.log(FINE, "isSubModule " + remote_parent.toString() + " " + remote_child.toString());
+
+                return remote_child.getParent().equals(remote_parent)        // check if remote_child is a direct child of remote_parent
+                    && local_child.getParent().equals(local_parent)          // check if local_child is a direct child of local_parent
+                    && remote_child.getName().equals(local_child.getName()); // check if suffix of remote and local match
+
+            } catch (SVNException e) {
+                return false;
+            }
         }
     }
 

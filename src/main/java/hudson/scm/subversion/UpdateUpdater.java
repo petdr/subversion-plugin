@@ -121,10 +121,15 @@ public class UpdateUpdater extends WorkspaceUpdater {
                 return delegateTo(new CheckoutUpdater());
             }
 
-
             final SVNUpdateClient svnuc = clientManager.getUpdateClient();
             final List<External> externals = new ArrayList<External>(); // store discovered externals to here
 
+            if (location.isSubmoduleOfSparseCheckout()) {
+                // The parent will already have updated this
+                // XXX what about if the depth has changed, in that case we need to set the depth to the new depth
+                return externals;
+            }
+            
             try {
                 File local = new File(ws, location.getLocalDir());
                 SubversionUpdateEventHandler eventHandler = new SubversionUpdateEventHandler(listener.getLogger(), externals, local, location.getLocalDir());
